@@ -52,19 +52,29 @@ $category = ($terms && !is_wp_error($terms)) ? $terms[0]->name : '';
                     <?php echo get_the_post_thumbnail($ebook_id, 'large', array('class' => 'single-cover-image glow-box')); ?>
                 <?php else: ?>
                     <div class="single-cover-placeholder glow-box">
-                        <span class="display-font">
-                            <?php echo esc_html(strtoupper(get_the_title($ebook_id))); ?>
-                        </span>
+                        <svg style="width: 96px; height: 96px; color: var(--rich-black);" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/>
+                        </svg>
                     </div>
                 <?php endif; ?>
+
+                <!-- Price Display -->
+                <div style="background: var(--neon-yellow); color: var(--rich-black); text-align: center; padding: 1.5rem; margin: 1.5rem 0; clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);">
+                    <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Price</div>
+                    <div style="font-size: 2.5rem; font-weight: 800; line-height: 1;"><?php echo esc_html($currency_symbol . number_format($price, 2)); ?></div>
+                </div>
 
                 <!-- Purchase Buttons -->
                 <?php if ($in_stock): ?>
                     <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
                         <button onclick="document.getElementById('ebook-purchase-form').scrollIntoView({behavior: 'smooth'})"
                                 class="btn-primary" style="flex: 1;">
-                            <?php _e('BUY NOW', 'skillscore-ebook'); ?> - <?php echo esc_html($currency_symbol . number_format($price, 2)); ?>
+                            <?php _e('BUY NOW', 'skillscore-ebook'); ?>
                         </button>
+                    </div>
+                <?php else: ?>
+                    <div style="background: #ef4444; color: white; text-align: center; padding: 1rem; border-radius: 8px; font-weight: 700; margin-bottom: 1.5rem;">
+                        <?php _e('OUT OF STOCK', 'skillscore-ebook'); ?>
                     </div>
                 <?php endif; ?>
             </div>

@@ -49,6 +49,7 @@ class SkillScore_Ebook_Core {
         require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-download-handler.php';
         require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-voice-preview.php';
         require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-admin-settings.php';
+        require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-sample-generator.php';
 
         // Elementor widget - only load when Elementor is active
         // Don't load here, load it via hook when Elementor initializes
@@ -69,6 +70,9 @@ class SkillScore_Ebook_Core {
         add_action('admin_menu', array($admin_settings, 'add_admin_menu'));
         add_action('admin_init', array($admin_settings, 'register_settings'));
         add_action('admin_enqueue_scripts', array($admin_settings, 'enqueue_admin_assets'));
+
+        // Sample generator
+        add_action('admin_menu', array('SkillScore_Sample_Generator', 'register_admin_page'));
 
         // Handle file uploads
         add_action('admin_post_skillscore_upload_ebook_file', array($ebook_cpt, 'handle_file_upload'));
