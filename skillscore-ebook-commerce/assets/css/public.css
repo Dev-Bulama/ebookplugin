@@ -1,0 +1,146 @@
+/**
+ * SkillScore Ebook Commerce - Public Styles
+ *
+ * @package SkillScore_Ebook
+ */
+
+/* Override Tailwind when needed */
+.skillscore-ebooks-grid {
+    margin-bottom: 2rem;
+}
+
+.ebook-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.ebook-card .p-6 {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.ebook-card .p-6 > div:last-child {
+    margin-top: auto;
+}
+
+/* Line clamp utility (for older browsers without Tailwind support) */
+.line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Payment gateway radio buttons */
+.ebook-payment-methods label {
+    cursor: pointer;
+}
+
+.ebook-payment-methods input[type="radio"]:checked + span {
+    color: #eab308;
+    font-weight: 600;
+}
+
+/* Loading spinner */
+.ebook-loading {
+    position: relative;
+}
+
+.ebook-loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f4f6;
+    border-top-color: #eab308;
+    border-radius: 50%;
+    animation: ebook-spin 0.6s linear infinite;
+}
+
+@keyframes ebook-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Audio player customization */
+audio {
+    width: 100%;
+    outline: none;
+}
+
+audio::-webkit-media-controls-panel {
+    background-color: #f9fafb;
+}
+
+/* Success/Error messages */
+.ebook-message {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.ebook-message.success {
+    background-color: #d1fae5;
+    color: #065f46;
+    border-left: 4px solid #10b981;
+}
+
+.ebook-message.error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-left: 4px solid #ef4444;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .skillscore-ebook-single .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Print styles */
+@media print {
+    .ebook-purchase-form,
+    #load-audio-preview {
+        display: none;
+    }
+}
+
+/* Accessibility improvements */
+.ebook-card:focus-within,
+.ebook-card:hover {
+    outline: 2px solid #eab308;
+    outline-offset: 2px;
+}
+
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 2px solid #eab308;
+    outline-offset: 2px;
+}
+
+/* Custom scrollbar for webkit browsers */
+.ebook-description::-webkit-scrollbar {
+    width: 8px;
+}
+
+.ebook-description::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.ebook-description::-webkit-scrollbar-thumb {
+    background: #eab308;
+    border-radius: 4px;
+}
+
+.ebook-description::-webkit-scrollbar-thumb:hover {
+    background: #ca8a04;
+}
