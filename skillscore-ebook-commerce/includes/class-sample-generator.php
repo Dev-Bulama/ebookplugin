@@ -97,9 +97,17 @@ class SkillScore_Sample_Generator {
         $created_posts = array();
 
         foreach ($samples as $sample) {
-            // Check if post already exists
-            $existing_post = get_page_by_title($sample['title'], OBJECT, 'ebook');
-            if ($existing_post) {
+            // Check if post already exists using WP_Query (replaces deprecated get_page_by_title)
+            $existing_query = new WP_Query(array(
+                'post_type' => 'ebook',
+                'title' => $sample['title'],
+                'posts_per_page' => 1,
+                'post_status' => 'any',
+                'fields' => 'ids',
+            ));
+
+            if ($existing_query->have_posts()) {
+                wp_reset_postdata();
                 continue; // Skip if already exists
             }
 

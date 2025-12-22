@@ -25,6 +25,9 @@ class SkillScore_Ebook_Shortcodes {
      * Usage: [skillscore_ebooks limit="12" category="fiction" orderby="date"]
      */
     public function ebooks_list_shortcode($atts) {
+        // Ensure assets are loaded
+        $this->enqueue_assets();
+
         $atts = shortcode_atts(array(
             'limit' => 12,
             'category' => '',
@@ -78,6 +81,9 @@ class SkillScore_Ebook_Shortcodes {
      * Usage: [skillscore_ebook id="123"]
      */
     public function single_ebook_shortcode($atts) {
+        // Ensure assets are loaded
+        $this->enqueue_assets();
+
         $atts = shortcode_atts(array(
             'id' => 0,
         ), $atts, 'skillscore_ebook');
@@ -128,5 +134,55 @@ class SkillScore_Ebook_Shortcodes {
         $in_stock = $unlimited || ($quantity && $quantity > 0);
 
         include SKILLSCORE_EBOOK_PLUGIN_DIR . 'templates/ebook-single.php';
+    }
+
+    /**
+     * Enqueue assets when shortcode is used.
+     */
+    private function enqueue_assets() {
+        // Only enqueue once
+        static $assets_enqueued = false;
+        if ($assets_enqueued) {
+            return;
+        }
+
+        // Tailwind CSS via CDN
+        wp_enqueue_style(
+            'tailwind-cdn',
+            'https://cdn.jsdelivr.net/npm/tailwindcss@3.4.0/dist/tailwind.min.css',
+            array(),
+            '3.4.0'
+        );
+
+        // Custom CSS
+        wp_enqueue_style(
+            'skillscore-ebook',
+            SKILLSCORE_EBOOK_PLUGIN_URL . 'assets/css/public.css',
+            array('tailwind-cdn'),
+            SKILLSCORE_EBOOK_VERSION
+        );
+
+        // Custom JS
+        wp_enqueue_script(
+            'skillscore-ebook',
+            SKILLSCORE_EBOOK_PLUGIN_URL . 'assets/js/public.js',
+            array('jquery'),
+            SKILLSCORE_EBOOK_VERSION,
+            true
+        );
+
+        // Localize script
+        wp_localize_script(
+            'skillscore-ebook',
+            'skillscoreEbook',
+            array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('skillscore_ebook_nonce'),
+                'currency' => get_option('skillscore_ebook_currency', 'USD'),
+                'currencySymbol' => get_option('skillscore_ebook_currency_symbol', '$'),
+            )
+        );
+
+        $assets_enqueued = true;
     }
 }
