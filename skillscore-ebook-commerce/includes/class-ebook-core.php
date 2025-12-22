@@ -50,10 +50,8 @@ class SkillScore_Ebook_Core {
         require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-voice-preview.php';
         require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-admin-settings.php';
 
-        // Elementor widget
-        if (did_action('elementor/loaded')) {
-            require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-elementor-widget.php';
-        }
+        // Elementor widget - only load when Elementor is active
+        // Don't load here, load it via hook when Elementor initializes
     }
 
     /**
@@ -99,10 +97,8 @@ class SkillScore_Ebook_Core {
         add_action('wp_ajax_skillscore_get_audio_preview', array($voice_preview, 'get_audio_preview'));
         add_action('wp_ajax_nopriv_skillscore_get_audio_preview', array($voice_preview, 'get_audio_preview'));
 
-        // Elementor widget
-        if (did_action('elementor/loaded')) {
-            add_action('elementor/widgets/register', array($this, 'register_elementor_widgets'));
-        }
+        // Elementor widget - only register if Elementor is active
+        add_action('elementor/widgets/register', array($this, 'register_elementor_widgets'));
 
         // Enqueue public assets
         add_action('wp_enqueue_scripts', array($this, 'enqueue_public_assets'));
@@ -112,6 +108,15 @@ class SkillScore_Ebook_Core {
      * Register Elementor widgets.
      */
     public function register_elementor_widgets($widgets_manager) {
+        // Check if Elementor is active before loading widget class
+        if (!class_exists('Elementor\Widget_Base')) {
+            return;
+        }
+
+        // Load the widget class file
+        require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-elementor-widget.php';
+
+        // Register the widget
         $widgets_manager->register(new SkillScore_Elementor_Ebook_Widget());
     }
 
