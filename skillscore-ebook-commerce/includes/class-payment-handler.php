@@ -17,53 +17,127 @@ class SkillScore_Ebook_Payment_Handler {
     public function initiate_payment() {
         check_ajax_referer('skillscore_ebook_nonce', 'nonce');
 
-        $ebook_id = intval($_POST['ebook_id']);
-        $quantity = intval($_POST['quantity']) ?: 1;
-        $gateway = sanitize_text_field($_POST['gateway']);
-        $user_email = sanitize_email($_POST['user_email']);
-        $user_name = sanitize_text_field($_POST['user_name']);
+        $ebook_id    = intval($_POST['ebook_id']);
+        $quantity    = intval($_POST['quantity']) ?: 1;
+        $user_email  = sanitize_email($_POST['user_email']);
+        $user_name   = sanitize_text_field($_POST['user_name']);
+        $order_type  = sanitize_text_field($_POST['order_type'] ?? 'individual');
+        $order_format = sanitize_text_field($_POST['order_format'] ?? 'ebook');
+        $user_phone  = sanitize_text_field($_POST['user_phone'] ?? '');
+        $order_bump  = intval($_POST['order_bump'] ?? 0);
 
         // Validate ebook
         if (!$ebook_id || get_post_type($ebook_id) !== 'ebook') {
             wp_send_json_error(array('message' => __('Invalid ebook.', 'skillscore-ebook')));
         }
 
+        // Build order meta for extra fields
+        $order_meta_arr = array(
+            'order_format' => $order_format,
+            'phone'        => $user_phone,
+        );
+
+        // Shipping fields (for paperback or bulk with address)
+        if (get_option('skillscore_ebook_enable_shipping_fields') && ($order_format === 'paperback' || $order_type === 'bulk')) {
+            $order_meta_arr['shipping'] = array(
+                'address' => sanitize_text_field($_POST['shipping_address'] ?? ''),
+                'city'    => sanitize_text_field($_POST['shipping_city'] ?? ''),
+                'state'   => sanitize_text_field($_POST['shipping_state'] ?? ''),
+                'country' => sanitize_text_field($_POST['shipping_country'] ?? ''),
+                'zip'     => sanitize_text_field($_POST['shipping_zip'] ?? ''),
+            );
+        }
+
+        $currency = get_option('skillscore_ebook_currency', 'USD');
+        $order_reference = 'SSE-' . time() . '-' . wp_rand(1000, 9999);
+
+        global $wpdb;
+        $orders_table = $wpdb->prefix . 'skillscore_orders';
+
+        // --- BULK INQUIRY FLOW ---
+        if ($order_type === 'bulk') {
+            $bulk_quantity = intval($_POST['bulk_quantity'] ?? 0);
+            $organization  = sanitize_text_field($_POST['organization'] ?? '');
+            $bulk_message  = sanitize_textarea_field($_POST['bulk_message'] ?? '');
+
+            $order_meta_arr['organization']  = $organization;
+            $order_meta_arr['bulk_quantity'] = $bulk_quantity;
+            $order_meta_arr['bulk_message']  = $bulk_message;
+
+            $insert_data = array(
+                'order_reference' => $order_reference,
+                'ebook_id'        => $ebook_id,
+                'user_email'      => $user_email,
+                'user_name'       => $user_name,
+                'user_id'         => get_current_user_id() ?: null,
+                'quantity'        => $bulk_quantity ?: 1,
+                'amount'          => 0,
+                'currency'        => $currency,
+                'payment_gateway' => 'bulk_inquiry',
+                'payment_status'  => 'inquiry',
+                'order_date'      => current_time('mysql'),
+                'order_type'      => 'bulk',
+                'order_meta'      => wp_json_encode($order_meta_arr),
+            );
+
+            $wpdb->insert($orders_table, $insert_data,
+                array('%s', '%d', '%s', '%s', '%d', '%d', '%f', '%s', '%s', '%s', '%s', '%s', '%s')
+            );
+
+            // Auto-response email to customer
+            $this->send_bulk_inquiry_email($user_name, $user_email, $organization, $bulk_quantity, $bulk_message);
+
+            wp_send_json_success(array(
+                'bulk_inquiry' => true,
+                'message'      => __('Your inquiry has been received. Our team will follow up with bulk pricing, sponsored distribution options, and program use guidance. Please watch your inbox.', 'skillscore-ebook'),
+            ));
+            return;
+        }
+
+        // --- INDIVIDUAL PURCHASE FLOW ---
+        $gateway = sanitize_text_field($_POST['gateway']);
+
         // Check stock
         $unlimited = get_post_meta($ebook_id, '_ebook_unlimited', true);
-        $stock = get_post_meta($ebook_id, '_ebook_quantity', true);
+        $stock     = get_post_meta($ebook_id, '_ebook_quantity', true);
 
         if (!$unlimited && $stock < $quantity) {
             wp_send_json_error(array('message' => __('Insufficient stock.', 'skillscore-ebook')));
         }
 
         // Calculate amount
-        $price = floatval(get_post_meta($ebook_id, '_ebook_price', true));
+        $price  = floatval(get_post_meta($ebook_id, '_ebook_price', true));
         $amount = $price * $quantity;
-        $currency = get_option('skillscore_ebook_currency', 'USD');
 
-        // Generate order reference
-        $order_reference = 'SSE-' . time() . '-' . wp_rand(1000, 9999);
+        // Order bump add-on
+        if ($order_bump && get_option('skillscore_ebook_enable_order_bump')) {
+            $bump_price = floatval(get_option('skillscore_ebook_order_bump_price', 0));
+            $bump_name  = get_option('skillscore_ebook_order_bump_name', '');
+            $amount    += $bump_price;
+            $order_meta_arr['order_bump'] = array(
+                'name'  => $bump_name,
+                'price' => $bump_price,
+            );
+        }
 
-        // Create order
-        global $wpdb;
-        $orders_table = $wpdb->prefix . 'skillscore_orders';
+        $insert_data = array(
+            'order_reference' => $order_reference,
+            'ebook_id'        => $ebook_id,
+            'user_email'      => $user_email,
+            'user_name'       => $user_name,
+            'user_id'         => get_current_user_id() ?: null,
+            'quantity'        => $quantity,
+            'amount'          => $amount,
+            'currency'        => $currency,
+            'payment_gateway' => $gateway,
+            'payment_status'  => 'pending',
+            'order_date'      => current_time('mysql'),
+            'order_type'      => 'individual',
+            'order_meta'      => wp_json_encode($order_meta_arr),
+        );
 
-        $wpdb->insert(
-            $orders_table,
-            array(
-                'order_reference' => $order_reference,
-                'ebook_id' => $ebook_id,
-                'user_email' => $user_email,
-                'user_name' => $user_name,
-                'user_id' => get_current_user_id() ?: null,
-                'quantity' => $quantity,
-                'amount' => $amount,
-                'currency' => $currency,
-                'payment_gateway' => $gateway,
-                'payment_status' => 'pending',
-                'order_date' => current_time('mysql'),
-            ),
-            array('%s', '%d', '%s', '%s', '%d', '%d', '%f', '%s', '%s', '%s', '%s')
+        $wpdb->insert($orders_table, $insert_data,
+            array('%s', '%d', '%s', '%s', '%d', '%d', '%f', '%s', '%s', '%s', '%s', '%s', '%s')
         );
 
         $order_id = $wpdb->insert_id;
@@ -76,6 +150,34 @@ class SkillScore_Ebook_Payment_Handler {
         } else {
             wp_send_json_error(array('message' => $result['message']));
         }
+    }
+
+    /**
+     * Send auto-response email for bulk inquiries.
+     */
+    private function send_bulk_inquiry_email($name, $email, $organization, $bulk_quantity, $message) {
+        $first_name = explode(' ', $name)[0];
+        $subject    = __('We received your No Excuses. No Miracles. inquiry.', 'skillscore-ebook');
+        $site_name  = get_bloginfo('name');
+
+        $body  = "Dear {$first_name},\n\n";
+        $body .= "Thank you for your interest in bringing No Excuses. No Miracles. to your organization, program, event, or community.\n\n";
+        $body .= "We have received your bulk inquiry";
+        if ($organization) {
+            $body .= " from {$organization}";
+        }
+        if ($bulk_quantity) {
+            $body .= " for approximately {$bulk_quantity} copies";
+        }
+        $body .= ".\n\n";
+        $body .= "No Excuses. No Miracles. is a bold nonfiction manifesto designed for youth programs, leadership institutes, entrepreneurship communities, civic spaces, student groups, faith-based reform settings, and conferences.\n\n";
+        $body .= "Our team will follow up with bulk pricing, sponsored distribution options, program use guidance, event bundle details, or a conversation about fit and scale.\n\n";
+        $body .= "Please watch your inbox — and check your junk folder if you don't hear from us within 2 business days.\n\n";
+        $body .= "Altitude Within\nRegarding No Excuses. No Miracles.\nwww.altitudewithin.com";
+
+        wp_mail($email, $subject, $body, array(
+            'From: ' . $site_name . ' <' . get_option('admin_email') . '>',
+        ));
     }
 
     /**
@@ -435,15 +537,27 @@ class SkillScore_Ebook_Payment_Handler {
                 update_post_meta($order->ebook_id, '_ebook_quantity', max(0, $current_stock - $order->quantity));
             }
 
-            // Generate download link
-            $download_handler = new SkillScore_Ebook_Download_Handler();
-            $download_token = $download_handler->create_download_token($order_id, $order->ebook_id);
+            // Determine format from order meta
+            $order_meta_data = !empty($order->order_meta) ? json_decode($order->order_meta, true) : array();
+            $order_format    = $order_meta_data['order_format'] ?? 'ebook';
 
-            // Redirect to success page with download link
-            $redirect_url = add_query_arg(array(
-                'payment_success' => '1',
-                'download_token' => $download_token,
-            ), get_permalink($order->ebook_id));
+            if ($order_format === 'paperback') {
+                // Physical order — no download token, show shipping confirmation
+                $redirect_url = add_query_arg(array(
+                    'payment_success'  => '1',
+                    'order_format'     => 'paperback',
+                    'order_ref'        => $order->order_reference,
+                ), get_permalink($order->ebook_id));
+            } else {
+                // Digital eBook — generate download token
+                $download_handler = new SkillScore_Ebook_Download_Handler();
+                $download_token   = $download_handler->create_download_token($order_id, $order->ebook_id);
+
+                $redirect_url = add_query_arg(array(
+                    'payment_success' => '1',
+                    'download_token'  => $download_token,
+                ), get_permalink($order->ebook_id));
+            }
 
             wp_redirect($redirect_url);
             exit;

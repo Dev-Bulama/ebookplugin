@@ -81,6 +81,16 @@ class SkillScore_Ebook_Admin_Settings {
         register_setting('skillscore_ebook_voice', 'skillscore_ebook_piper_model');
         register_setting('skillscore_ebook_voice', 'skillscore_ebook_coqui_api_url');
         register_setting('skillscore_ebook_voice', 'skillscore_ebook_ffmpeg_path');
+
+        // Checkout feature settings
+        register_setting('skillscore_ebook_checkout', 'skillscore_ebook_enable_format_selector');
+        register_setting('skillscore_ebook_checkout', 'skillscore_ebook_enable_phone_field');
+        register_setting('skillscore_ebook_checkout', 'skillscore_ebook_enable_shipping_fields');
+        register_setting('skillscore_ebook_checkout', 'skillscore_ebook_enable_bulk_option');
+        register_setting('skillscore_ebook_checkout', 'skillscore_ebook_bulk_min_quantity');
+        register_setting('skillscore_ebook_checkout', 'skillscore_ebook_enable_order_bump');
+        register_setting('skillscore_ebook_checkout', 'skillscore_ebook_order_bump_name');
+        register_setting('skillscore_ebook_checkout', 'skillscore_ebook_order_bump_price');
     }
 
     /**
@@ -109,6 +119,10 @@ class SkillScore_Ebook_Admin_Settings {
                    class="nav-tab <?php echo $active_tab === 'voice' ? 'nav-tab-active' : ''; ?>">
                     <?php _e('Voice Preview', 'skillscore-ebook'); ?>
                 </a>
+                <a href="?post_type=ebook&page=skillscore-ebook-settings&tab=checkout"
+                   class="nav-tab <?php echo $active_tab === 'checkout' ? 'nav-tab-active' : ''; ?>">
+                    <?php _e('Checkout Features', 'skillscore-ebook'); ?>
+                </a>
             </h2>
 
             <form method="post" action="options.php">
@@ -125,6 +139,10 @@ class SkillScore_Ebook_Admin_Settings {
                     case 'voice':
                         settings_fields('skillscore_ebook_voice');
                         $this->render_voice_settings();
+                        break;
+                    case 'checkout':
+                        settings_fields('skillscore_ebook_checkout');
+                        $this->render_checkout_settings();
                         break;
                 }
                 submit_button();
@@ -334,6 +352,114 @@ class SkillScore_Ebook_Admin_Settings {
     }
 
     /**
+     * Render checkout feature settings.
+     */
+    private function render_checkout_settings() {
+        ?>
+        <h2><?php _e('Format & Purchase Type', 'skillscore-ebook'); ?></h2>
+        <table class="form-table">
+            <tr>
+                <th scope="row"><?php _e('Enable Format Selector', 'skillscore-ebook'); ?></th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="skillscore_ebook_enable_format_selector" value="1"
+                               <?php checked(get_option('skillscore_ebook_enable_format_selector'), '1'); ?> />
+                        <?php _e('Show Paperback / eBook format choice on the checkout form', 'skillscore-ebook'); ?>
+                    </label>
+                    <p class="description"><?php _e('When enabled, customers can choose between a Paperback (physical) or eBook (digital download). Button text changes dynamically.', 'skillscore-ebook'); ?></p>
+                </td>
+            </tr>
+        </table>
+
+        <hr>
+
+        <h2><?php _e('Customer Fields', 'skillscore-ebook'); ?></h2>
+        <table class="form-table">
+            <tr>
+                <th scope="row"><?php _e('Enable Phone Number Field', 'skillscore-ebook'); ?></th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="skillscore_ebook_enable_phone_field" value="1"
+                               <?php checked(get_option('skillscore_ebook_enable_phone_field'), '1'); ?> />
+                        <?php _e('Show a phone number field on the checkout form', 'skillscore-ebook'); ?>
+                    </label>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><?php _e('Enable Shipping Address Fields', 'skillscore-ebook'); ?></th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="skillscore_ebook_enable_shipping_fields" value="1"
+                               <?php checked(get_option('skillscore_ebook_enable_shipping_fields'), '1'); ?> />
+                        <?php _e('Show shipping address fields (automatically revealed when Paperback format is selected)', 'skillscore-ebook'); ?>
+                    </label>
+                </td>
+            </tr>
+        </table>
+
+        <hr>
+
+        <h2><?php _e('Bulk / Institutional Orders', 'skillscore-ebook'); ?></h2>
+        <table class="form-table">
+            <tr>
+                <th scope="row"><?php _e('Enable Bulk Order Option', 'skillscore-ebook'); ?></th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="skillscore_ebook_enable_bulk_option" value="1"
+                               <?php checked(get_option('skillscore_ebook_enable_bulk_option'), '1'); ?> />
+                        <?php _e('Allow customers to switch to a Bulk / Institutional inquiry form', 'skillscore-ebook'); ?>
+                    </label>
+                    <p class="description"><?php _e('Bulk inquiries are saved as leads (no payment processed). You receive the details and follow up manually.', 'skillscore-ebook'); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><?php _e('Bulk Minimum Quantity', 'skillscore-ebook'); ?></th>
+                <td>
+                    <input type="number" name="skillscore_ebook_bulk_min_quantity"
+                           value="<?php echo esc_attr(get_option('skillscore_ebook_bulk_min_quantity', 10)); ?>"
+                           class="small-text" min="2" />
+                    <p class="description"><?php _e('Minimum number of copies for a bulk inquiry.', 'skillscore-ebook'); ?></p>
+                </td>
+            </tr>
+        </table>
+
+        <hr>
+
+        <h2><?php _e('Order Bump / Add-On', 'skillscore-ebook'); ?></h2>
+        <table class="form-table">
+            <tr>
+                <th scope="row"><?php _e('Enable Order Bump', 'skillscore-ebook'); ?></th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="skillscore_ebook_enable_order_bump" value="1"
+                               <?php checked(get_option('skillscore_ebook_enable_order_bump'), '1'); ?> />
+                        <?php _e('Show an optional add-on product on the checkout form', 'skillscore-ebook'); ?>
+                    </label>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><?php _e('Add-On Product Name', 'skillscore-ebook'); ?></th>
+                <td>
+                    <input type="text" name="skillscore_ebook_order_bump_name"
+                           value="<?php echo esc_attr(get_option('skillscore_ebook_order_bump_name', '90-Day No Excuse Journal')); ?>"
+                           class="regular-text" />
+                    <p class="description"><?php _e('Name of the companion add-on product.', 'skillscore-ebook'); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><?php _e('Add-On Price', 'skillscore-ebook'); ?></th>
+                <td>
+                    <input type="number" name="skillscore_ebook_order_bump_price"
+                           value="<?php echo esc_attr(get_option('skillscore_ebook_order_bump_price', 0)); ?>"
+                           class="small-text" min="0" step="0.01" />
+                    <p class="description"><?php _e('Additional price charged when the customer adds this product. Set 0 to include it free.', 'skillscore-ebook'); ?></p>
+                </td>
+            </tr>
+        </table>
+        <?php
+    }
+
+    /**
      * Render voice preview settings.
      */
     private function render_voice_settings() {
@@ -500,6 +626,7 @@ class SkillScore_Ebook_Admin_Settings {
                         <th><?php _e('Order #', 'skillscore-ebook'); ?></th>
                         <th><?php _e('Ebook', 'skillscore-ebook'); ?></th>
                         <th><?php _e('Customer', 'skillscore-ebook'); ?></th>
+                        <th><?php _e('Type', 'skillscore-ebook'); ?></th>
                         <th><?php _e('Amount', 'skillscore-ebook'); ?></th>
                         <th><?php _e('Quantity', 'skillscore-ebook'); ?></th>
                         <th><?php _e('Gateway', 'skillscore-ebook'); ?></th>
@@ -510,16 +637,34 @@ class SkillScore_Ebook_Admin_Settings {
                 <tbody>
                     <?php if ($orders): ?>
                         <?php foreach ($orders as $order): ?>
+                            <?php
+                            $order_meta = !empty($order->order_meta) ? json_decode($order->order_meta, true) : array();
+                            $order_type = !empty($order->order_type) ? $order->order_type : 'individual';
+                            $order_format = $order_meta['order_format'] ?? 'ebook';
+                            ?>
                             <tr>
                                 <td><?php echo esc_html($order->order_reference); ?></td>
                                 <td><?php echo esc_html($order->ebook_title); ?></td>
                                 <td>
                                     <?php echo esc_html($order->user_name); ?><br>
                                     <small><?php echo esc_html($order->user_email); ?></small>
+                                    <?php if (!empty($order_meta['phone'])): ?>
+                                        <br><small><?php echo esc_html($order_meta['phone']); ?></small>
+                                    <?php endif; ?>
+                                    <?php if (!empty($order_meta['organization'])): ?>
+                                        <br><small><em><?php echo esc_html($order_meta['organization']); ?></em></small>
+                                    <?php endif; ?>
                                 </td>
-                                <td><?php echo esc_html($order->currency . ' ' . number_format($order->amount, 2)); ?></td>
-                                <td><?php echo esc_html($order->quantity); ?></td>
-                                <td><?php echo esc_html(ucfirst($order->payment_gateway)); ?></td>
+                                <td>
+                                    <?php if ($order_type === 'bulk'): ?>
+                                        <span style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;"><?php _e('Bulk Inquiry', 'skillscore-ebook'); ?></span>
+                                    <?php else: ?>
+                                        <span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;"><?php echo esc_html(ucfirst($order_format)); ?></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?php echo $order_type === 'bulk' ? '—' : esc_html($order->currency . ' ' . number_format($order->amount, 2)); ?></td>
+                                <td><?php echo $order_type === 'bulk' ? esc_html($order_meta['bulk_quantity'] ?? '—') : esc_html($order->quantity); ?></td>
+                                <td><?php echo $order_type === 'bulk' ? '—' : esc_html(ucfirst($order->payment_gateway)); ?></td>
                                 <td>
                                     <span class="order-status status-<?php echo esc_attr($order->payment_status); ?>">
                                         <?php echo esc_html(ucfirst($order->payment_status)); ?>
@@ -530,7 +675,7 @@ class SkillScore_Ebook_Admin_Settings {
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="8"><?php _e('No orders found.', 'skillscore-ebook'); ?></td>
+                            <td colspan="9"><?php _e('No orders found.', 'skillscore-ebook'); ?></td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
