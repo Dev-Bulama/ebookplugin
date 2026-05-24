@@ -22,15 +22,27 @@ if (!defined('WPINC')) {
 
 /**
  * TEMPORARY DEBUG — captures fatal errors during activation.
- * After finding the error, remove this block and the activation-debug.log file.
+ * Remove this entire block once the error is identified and fixed.
  */
 register_shutdown_function(function () {
     $error = error_get_last();
     if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true)) {
-        $log = plugin_dir_path(__FILE__) . 'activation-debug.log';
-        $line = date('[Y-m-d H:i:s]') . ' FATAL: ' . $error['message']
-              . ' in ' . $error['file'] . ' on line ' . $error['line'] . PHP_EOL;
-        @file_put_contents($log, $line, FILE_APPEND | LOCK_EX);
+        $msg = date('[Y-m-d H:i:s]') . ' SKILLSCORE FATAL: ' . $error['message']
+             . ' in ' . $error['file'] . ' on line ' . $error['line'] . PHP_EOL;
+
+        // 1. PHP error log (always writable — check /var/log/php*.log or Apache/Nginx error log)
+        error_log(trim($msg));
+
+        // 2. System temp dir (e.g. /tmp/skillscore-debug.log)
+        file_put_contents(sys_get_temp_dir() . '/skillscore-debug.log', $msg, FILE_APPEND);
+
+        // 3. Plugin directory (may fail if not writable — no @ so the error appears in PHP log)
+        file_put_contents(__DIR__ . '/activation-debug.log', $msg, FILE_APPEND);
+
+        // 4. wp-content directory as a fallback
+        if (defined('WP_CONTENT_DIR')) {
+            file_put_contents(WP_CONTENT_DIR . '/skillscore-debug.log', $msg, FILE_APPEND);
+        }
     }
 });
 
