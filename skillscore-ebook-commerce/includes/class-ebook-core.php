@@ -71,10 +71,6 @@ class SkillScore_Ebook_Core {
         add_action('admin_init', array($admin_settings, 'register_settings'));
         add_action('admin_enqueue_scripts', array($admin_settings, 'enqueue_admin_assets'));
 
-        // Schema upgrades for existing installs
-        require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-activator.php';
-        add_action('admin_init', array('SkillScore_Ebook_Activator', 'maybe_upgrade_schema'));
-
         // Sample generator
         add_action('admin_menu', array('SkillScore_Sample_Generator', 'register_admin_page'));
 

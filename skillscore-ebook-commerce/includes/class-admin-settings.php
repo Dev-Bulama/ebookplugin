@@ -44,9 +44,39 @@ class SkillScore_Ebook_Admin_Settings {
     }
 
     /**
+     * Ensure new columns exist in the orders table for existing installs.
+     * Runs on admin_init via register_settings(). Uses ALTER TABLE so it is
+     * safe to call repeatedly — it only acts when a column is missing.
+     */
+    private function maybe_upgrade_orders_schema() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'skillscore_orders';
+
+        // Guard: table may not exist yet on fresh installs (activator creates it)
+        $table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+        if ( ! $table_exists ) {
+            return;
+        }
+
+        $existing_columns = $wpdb->get_col( "SHOW COLUMNS FROM `{$table}`", 0 );
+
+        if ( ! in_array( 'order_type', $existing_columns, true ) ) {
+            $wpdb->query( "ALTER TABLE `{$table}` ADD COLUMN `order_type` varchar(20) NOT NULL DEFAULT 'individual'" );
+            $wpdb->query( "ALTER TABLE `{$table}` ADD INDEX `order_type` (`order_type`)" );
+        }
+
+        if ( ! in_array( 'order_meta', $existing_columns, true ) ) {
+            $wpdb->query( "ALTER TABLE `{$table}` ADD COLUMN `order_meta` text DEFAULT NULL" );
+        }
+    }
+
+    /**
      * Register settings.
      */
     public function register_settings() {
+        // Ensure schema is current for existing installs
+        $this->maybe_upgrade_orders_schema();
+
         // General settings
         register_setting('skillscore_ebook_general', 'skillscore_ebook_currency');
         register_setting('skillscore_ebook_general', 'skillscore_ebook_currency_symbol');
