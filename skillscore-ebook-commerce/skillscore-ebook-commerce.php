@@ -21,6 +21,20 @@ if (!defined('WPINC')) {
 }
 
 /**
+ * TEMPORARY DEBUG — captures fatal errors during activation.
+ * After finding the error, remove this block and the activation-debug.log file.
+ */
+register_shutdown_function(function () {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true)) {
+        $log = plugin_dir_path(__FILE__) . 'activation-debug.log';
+        $line = date('[Y-m-d H:i:s]') . ' FATAL: ' . $error['message']
+              . ' in ' . $error['file'] . ' on line ' . $error['line'] . PHP_EOL;
+        @file_put_contents($log, $line, FILE_APPEND | LOCK_EX);
+    }
+});
+
+/**
  * Current plugin version.
  */
 define('SKILLSCORE_EBOOK_VERSION', '1.0.0');
