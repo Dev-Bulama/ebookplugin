@@ -11,25 +11,38 @@ if (!defined('ABSPATH')) {
 
 // Check for payment success
 $payment_success = isset($_GET['payment_success']) && $_GET['payment_success'] === '1';
-$download_token = isset($_GET['download_token']) ? sanitize_text_field($_GET['download_token']) : '';
+$download_token  = isset($_GET['download_token']) ? sanitize_text_field($_GET['download_token']) : '';
+$order_format_success = isset($_GET['order_format']) ? sanitize_text_field($_GET['order_format']) : 'ebook';
+$order_ref_success    = isset($_GET['order_ref']) ? sanitize_text_field($_GET['order_ref']) : '';
 
 // Get additional meta
 $terms = get_the_terms($ebook_id, 'ebook_category');
 $category = ($terms && !is_wp_error($terms)) ? $terms[0]->name : '';
+
+// Checkout feature flags
+$feat_format_selector  = (bool) get_option('skillscore_ebook_enable_format_selector');
+$feat_phone_field      = (bool) get_option('skillscore_ebook_enable_phone_field');
+$feat_shipping_fields  = (bool) get_option('skillscore_ebook_enable_shipping_fields');
+$feat_bulk_option      = (bool) get_option('skillscore_ebook_enable_bulk_option');
+$feat_bulk_min_qty     = intval(get_option('skillscore_ebook_bulk_min_quantity', 10));
+$feat_order_bump       = (bool) get_option('skillscore_ebook_enable_order_bump');
+$feat_bump_name        = get_option('skillscore_ebook_order_bump_name', '90-Day No Excuse Journal');
+$feat_bump_price       = floatval(get_option('skillscore_ebook_order_bump_price', 0));
 ?>
 
 <div class="skillscore-ebook-single fade-in">
 
     <?php if ($payment_success && $download_token): ?>
-        <!-- Success Message -->
+        <!-- eBook Success Message -->
         <div class="success-message">
             <div class="success-message-header">
                 <svg fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                 </svg>
-                <h3 class="success-message-title"><?php _e('PAYMENT SUCCESSFUL!', 'skillscore-ebook'); ?></h3>
+                <h3 class="success-message-title"><?php _e('YOUR ORDER IS CONFIRMED', 'skillscore-ebook'); ?></h3>
             </div>
-            <p><?php _e('Your payment has been processed successfully. You can now download your ebook.', 'skillscore-ebook'); ?></p>
+            <p><?php _e('You now have a copy of a book that was not written to comfort you. It was written to confront what has kept people and nations weak for too long.', 'skillscore-ebook'); ?></p>
+            <p style="color: #9ca3af; font-size: 0.875rem; margin-bottom: 1.5rem;"><?php _e('A confirmation email has been sent with your access details. Read slowly, read honestly — do not race through it.', 'skillscore-ebook'); ?></p>
             <?php
             $download_handler = new SkillScore_Ebook_Download_Handler();
             $download_link = $download_handler->get_download_link($download_token);
@@ -38,8 +51,23 @@ $category = ($terms && !is_wp_error($terms)) ? $terms[0]->name : '';
                 <svg style="width: 20px; height: 20px; margin-right: 8px;" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
                 </svg>
-                <?php _e('Download Now', 'skillscore-ebook'); ?>
+                <?php _e('GET INSTANT ACCESS', 'skillscore-ebook'); ?>
             </a>
+        </div>
+    <?php elseif ($payment_success && $order_format_success === 'paperback'): ?>
+        <!-- Paperback Order Confirmed -->
+        <div class="success-message">
+            <div class="success-message-header">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <h3 class="success-message-title"><?php _e('YOUR ORDER IS CONFIRMED', 'skillscore-ebook'); ?></h3>
+            </div>
+            <p><?php _e('You now have a copy of a book that was not written to comfort you. It was written to confront what has kept people and nations weak for too long.', 'skillscore-ebook'); ?></p>
+            <p style="color: #9ca3af; font-size: 0.875rem;"><?php _e('A confirmation email has been sent. Your paperback copy will be shipped to the address you provided. Please allow standard delivery time.', 'skillscore-ebook'); ?></p>
+            <?php if ($order_ref_success): ?>
+                <p style="color: #6b7280; font-size: 0.8rem; margin-top: 1rem;"><?php _e('Order Reference:', 'skillscore-ebook'); ?> <strong><?php echo esc_html($order_ref_success); ?></strong></p>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 
@@ -241,86 +269,279 @@ $category = ($terms && !is_wp_error($terms)) ? $terms[0]->name : '';
             <!-- Purchase Form -->
             <?php if ($in_stock): ?>
                 <div style="background: var(--dark-gray); padding: 1.5rem; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); border: 2px solid var(--light-gray); margin-top: 2rem;">
-                    <h3 style="font-weight: 700; font-size: 1.25rem; margin-bottom: 1rem; color: var(--neon-yellow);">
-                        <?php _e('PURCHASE THIS EBOOK', 'skillscore-ebook'); ?>
+                    <h3 style="font-weight: 700; font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--neon-yellow);">
+                        <?php _e('COMPLETE YOUR ORDER', 'skillscore-ebook'); ?>
                     </h3>
+                    <p style="color: #9ca3af; font-size: 0.875rem; margin-bottom: 1.5rem; line-height: 1.5;">
+                        <?php _e('You are not buying comfort; you are buying confrontation, clarity, and a book strong enough to force an honest reckoning.', 'skillscore-ebook'); ?>
+                    </p>
+
                     <form id="ebook-purchase-form">
                         <input type="hidden" name="ebook_id" value="<?php echo esc_attr($ebook_id); ?>">
+                        <!-- These hidden fields are updated by JS when format/type toggles change -->
+                        <input type="hidden" name="order_format" id="hidden-order-format" value="ebook">
+                        <input type="hidden" name="order_type" id="hidden-order-type" value="individual">
 
-                        <!-- Quantity Selector -->
-                        <?php if ($enable_quantity_selector): ?>
-                            <div style="margin-bottom: 1rem;">
-                                <label style="display: block; font-weight: 600; font-size: 0.875rem; margin-bottom: 0.5rem;">
-                                    <?php _e('Quantity', 'skillscore-ebook'); ?>
+                        <?php /* ── PURCHASE TYPE TOGGLE (Bulk Option) ── */ ?>
+                        <?php if ($feat_bulk_option): ?>
+                        <div class="sse-checkout-section" style="margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--light-gray);">
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--neon-yellow);">
+                                <?php _e('Purchase Type', 'skillscore-ebook'); ?>
+                            </label>
+                            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                <label class="sse-type-option sse-type-option--active" id="type-individual-label" style="flex: 1; min-width: 160px; display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border: 2px solid var(--neon-yellow); border-radius: 8px; cursor: pointer;">
+                                    <input type="radio" name="_order_type_ui" value="individual" checked style="accent-color: var(--neon-yellow);">
+                                    <span style="font-weight: 600; font-size: 0.9rem;"><?php _e('Individual Purchase', 'skillscore-ebook'); ?></span>
                                 </label>
-                                <input type="number" name="quantity" value="1" min="1"
-                                       <?php if (!$unlimited): ?>max="<?php echo esc_attr($quantity); ?>"<?php endif; ?>
-                                       style="width: 100%; padding: 12px 16px; background: var(--rich-black); border: 2px solid var(--light-gray); color: var(--white); border-radius: 8px; font-size: 1rem;">
+                                <label class="sse-type-option" id="type-bulk-label" style="flex: 1; min-width: 160px; display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border: 2px solid var(--light-gray); border-radius: 8px; cursor: pointer;">
+                                    <input type="radio" name="_order_type_ui" value="bulk" style="accent-color: var(--neon-yellow);">
+                                    <span style="font-weight: 600; font-size: 0.9rem;"><?php printf(__('Bulk Order (%d+ copies)', 'skillscore-ebook'), $feat_bulk_min_qty); ?></span>
+                                </label>
                             </div>
-                        <?php else: ?>
-                            <input type="hidden" name="quantity" value="1">
+                        </div>
                         <?php endif; ?>
 
-                        <!-- Customer Information -->
-                        <div style="margin-bottom: 1rem;">
-                            <label style="display: block; font-weight: 600; font-size: 0.875rem; margin-bottom: 0.5rem;">
-                                <?php _e('Your Name', 'skillscore-ebook'); ?>
-                            </label>
-                            <input type="text" name="user_name" required
-                                   style="width: 100%; padding: 12px 16px; background: var(--rich-black); border: 2px solid var(--light-gray); color: var(--white); border-radius: 8px; font-size: 1rem;">
-                        </div>
+                        <?php /* ── INDIVIDUAL PURCHASE SECTION ── */ ?>
+                        <div id="individual-purchase-section">
 
-                        <div style="margin-bottom: 1rem;">
-                            <label style="display: block; font-weight: 600; font-size: 0.875rem; margin-bottom: 0.5rem;">
-                                <?php _e('Your Email', 'skillscore-ebook'); ?>
-                            </label>
-                            <input type="email" name="user_email" required
-                                   style="width: 100%; padding: 12px 16px; background: var(--rich-black); border: 2px solid var(--light-gray); color: var(--white); border-radius: 8px; font-size: 1rem;">
-                        </div>
-
-                        <!-- Payment Gateway Selection -->
-                        <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; font-weight: 600; font-size: 0.875rem; margin-bottom: 0.75rem;">
-                                <?php _e('Select Payment Method', 'skillscore-ebook'); ?>
-                            </label>
-                            <div class="payment-methods">
-                                <?php if (get_option('skillscore_ebook_enable_paystack')): ?>
-                                    <label class="payment-method-option">
-                                        <input type="radio" name="gateway" value="paystack" required>
-                                        <span style="font-weight: 600;">Paystack</span>
+                            <?php /* Format Selector */ ?>
+                            <?php if ($feat_format_selector): ?>
+                            <div class="sse-checkout-section" style="margin-bottom: 1.25rem;">
+                                <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em;">
+                                    <?php _e('Select Format', 'skillscore-ebook'); ?>
+                                </label>
+                                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                    <label class="sse-format-option sse-format-option--active" id="format-ebook-label" style="flex: 1; min-width: 140px; display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.75rem 1rem; border: 2px solid var(--neon-yellow); border-radius: 8px; cursor: pointer;">
+                                        <input type="radio" name="_order_format_ui" value="ebook" checked style="accent-color: var(--neon-yellow); margin-top: 2px;">
+                                        <span>
+                                            <strong style="display: block; font-size: 0.9rem;"><?php _e('eBook', 'skillscore-ebook'); ?></strong>
+                                            <small style="color: #9ca3af;"><?php _e('Instant download', 'skillscore-ebook'); ?></small>
+                                        </span>
                                     </label>
-                                <?php endif; ?>
-
-                                <?php if (get_option('skillscore_ebook_enable_flutterwave')): ?>
-                                    <label class="payment-method-option">
-                                        <input type="radio" name="gateway" value="flutterwave" required>
-                                        <span style="font-weight: 600;">Flutterwave</span>
+                                    <label class="sse-format-option" id="format-paperback-label" style="flex: 1; min-width: 140px; display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.75rem 1rem; border: 2px solid var(--light-gray); border-radius: 8px; cursor: pointer;">
+                                        <input type="radio" name="_order_format_ui" value="paperback" style="accent-color: var(--neon-yellow); margin-top: 2px;">
+                                        <span>
+                                            <strong style="display: block; font-size: 0.9rem;"><?php _e('Paperback', 'skillscore-ebook'); ?></strong>
+                                            <small style="color: #9ca3af;"><?php _e('Physical copy', 'skillscore-ebook'); ?></small>
+                                        </span>
                                     </label>
-                                <?php endif; ?>
-
-                                <?php if (get_option('skillscore_ebook_enable_stripe')): ?>
-                                    <label class="payment-method-option">
-                                        <input type="radio" name="gateway" value="stripe" required>
-                                        <span style="font-weight: 600;">Stripe</span>
-                                    </label>
-                                <?php endif; ?>
-
-                                <?php if (get_option('skillscore_ebook_enable_paypal')): ?>
-                                    <label class="payment-method-option">
-                                        <input type="radio" name="gateway" value="paypal" required>
-                                        <span style="font-weight: 600;">PayPal</span>
-                                    </label>
-                                <?php endif; ?>
+                                </div>
                             </div>
-                        </div>
+                            <?php endif; ?>
 
-                        <!-- Purchase Button -->
-                        <button type="submit" class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-center;">
-                            <svg style="width: 20px; height: 20px; margin-right: 8px;" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/>
-                            </svg>
-                            <?php _e('PURCHASE NOW', 'skillscore-ebook'); ?>
-                        </button>
+                            <?php /* Quantity Selector */ ?>
+                            <?php if ($enable_quantity_selector): ?>
+                                <div style="margin-bottom: 1rem;">
+                                    <label class="sse-field-label"><?php _e('Quantity', 'skillscore-ebook'); ?></label>
+                                    <input type="number" name="quantity" id="sse-quantity" value="1" min="1"
+                                           <?php if (!$unlimited): ?>max="<?php echo esc_attr($quantity); ?>"<?php endif; ?>
+                                           data-price="<?php echo esc_attr($price); ?>"
+                                           class="sse-field-input">
+                                    <p id="sse-total-display" style="margin-top: 0.4rem; font-size: 0.875rem; color: var(--neon-yellow); font-weight: 700; display: none;"></p>
+                                </div>
+                            <?php else: ?>
+                                <input type="hidden" name="quantity" value="1">
+                            <?php endif; ?>
+
+                            <?php /* Customer Name */ ?>
+                            <div style="margin-bottom: 1rem;">
+                                <label class="sse-field-label"><?php _e('Your Name', 'skillscore-ebook'); ?></label>
+                                <input type="text" name="user_name" required class="sse-field-input"
+                                       placeholder="<?php esc_attr_e('Full name', 'skillscore-ebook'); ?>">
+                            </div>
+
+                            <?php /* Customer Email */ ?>
+                            <div style="margin-bottom: 0.5rem;">
+                                <label class="sse-field-label"><?php _e('Your Email', 'skillscore-ebook'); ?></label>
+                                <input type="email" name="user_email" required class="sse-field-input"
+                                       placeholder="<?php esc_attr_e('your@email.com', 'skillscore-ebook'); ?>">
+                            </div>
+                            <p class="sse-microcopy"><?php _e('Your email will be used to send your confirmation and/or access details.', 'skillscore-ebook'); ?></p>
+
+                            <?php /* Phone Field */ ?>
+                            <?php if ($feat_phone_field): ?>
+                            <div style="margin-bottom: 1rem;">
+                                <label class="sse-field-label"><?php _e('Phone Number', 'skillscore-ebook'); ?></label>
+                                <input type="tel" name="user_phone" class="sse-field-input"
+                                       placeholder="<?php esc_attr_e('+1 (555) 000-0000', 'skillscore-ebook'); ?>">
+                            </div>
+                            <?php endif; ?>
+
+                            <?php /* Shipping Fields (shown when Paperback selected) */ ?>
+                            <?php if ($feat_shipping_fields): ?>
+                            <div id="shipping-fields-group" style="display: none; margin-bottom: 1rem; padding: 1rem; background: var(--rich-black); border: 1px solid var(--light-gray); border-radius: 8px;">
+                                <p class="sse-microcopy" style="margin-bottom: 1rem; color: #f59e0b;">
+                                    <?php _e('Please enter your shipping details carefully to avoid delivery delays.', 'skillscore-ebook'); ?>
+                                </p>
+                                <div style="margin-bottom: 0.75rem;">
+                                    <label class="sse-field-label"><?php _e('Street Address', 'skillscore-ebook'); ?></label>
+                                    <input type="text" name="shipping_address" class="sse-field-input sse-shipping-field"
+                                           placeholder="<?php esc_attr_e('123 Main Street', 'skillscore-ebook'); ?>">
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+                                    <div>
+                                        <label class="sse-field-label"><?php _e('City', 'skillscore-ebook'); ?></label>
+                                        <input type="text" name="shipping_city" class="sse-field-input sse-shipping-field"
+                                               placeholder="<?php esc_attr_e('City', 'skillscore-ebook'); ?>">
+                                    </div>
+                                    <div>
+                                        <label class="sse-field-label"><?php _e('State / Province', 'skillscore-ebook'); ?></label>
+                                        <input type="text" name="shipping_state" class="sse-field-input sse-shipping-field"
+                                               placeholder="<?php esc_attr_e('State', 'skillscore-ebook'); ?>">
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                    <div>
+                                        <label class="sse-field-label"><?php _e('Country', 'skillscore-ebook'); ?></label>
+                                        <input type="text" name="shipping_country" class="sse-field-input sse-shipping-field"
+                                               placeholder="<?php esc_attr_e('Country', 'skillscore-ebook'); ?>">
+                                    </div>
+                                    <div>
+                                        <label class="sse-field-label"><?php _e('ZIP / Postal Code', 'skillscore-ebook'); ?></label>
+                                        <input type="text" name="shipping_zip" class="sse-field-input sse-shipping-field"
+                                               placeholder="<?php esc_attr_e('Postal code', 'skillscore-ebook'); ?>">
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php /* Payment Gateway Selection */ ?>
+                            <div style="margin-bottom: 0.5rem;">
+                                <label class="sse-field-label"><?php _e('Select Payment Method', 'skillscore-ebook'); ?></label>
+                                <div class="payment-methods" id="gateway-options">
+                                    <?php if (get_option('skillscore_ebook_enable_paystack')): ?>
+                                        <label class="payment-method-option">
+                                            <input type="radio" name="gateway" value="paystack" class="sse-gateway-radio" required>
+                                            <span style="font-weight: 600;">Paystack</span>
+                                        </label>
+                                    <?php endif; ?>
+
+                                    <?php if (get_option('skillscore_ebook_enable_flutterwave')): ?>
+                                        <label class="payment-method-option">
+                                            <input type="radio" name="gateway" value="flutterwave" class="sse-gateway-radio" required>
+                                            <span style="font-weight: 600;">Flutterwave</span>
+                                        </label>
+                                    <?php endif; ?>
+
+                                    <?php if (get_option('skillscore_ebook_enable_stripe')): ?>
+                                        <label class="payment-method-option">
+                                            <input type="radio" name="gateway" value="stripe" class="sse-gateway-radio" required>
+                                            <span style="font-weight: 600;">Stripe</span>
+                                        </label>
+                                    <?php endif; ?>
+
+                                    <?php if (get_option('skillscore_ebook_enable_paypal')): ?>
+                                        <label class="payment-method-option">
+                                            <input type="radio" name="gateway" value="paypal" class="sse-gateway-radio" required>
+                                            <span style="font-weight: 600;">PayPal</span>
+                                        </label>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <p class="sse-microcopy" style="margin-bottom: 1.5rem;"><?php _e('Your order is protected through secure checkout.', 'skillscore-ebook'); ?></p>
+
+                            <?php /* Order Bump / Add-on */ ?>
+                            <?php if ($feat_order_bump): ?>
+                            <div class="sse-order-bump" style="margin-bottom: 1.5rem; padding: 1rem; border: 2px dashed var(--neon-yellow); border-radius: 8px; background: rgba(255,229,0,0.05);">
+                                <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+                                    <input type="checkbox" name="order_bump" id="order-bump-checkbox" value="1"
+                                           style="width: 20px; height: 20px; accent-color: var(--neon-yellow); margin-top: 2px; flex-shrink: 0;">
+                                    <span>
+                                        <strong style="display: block; font-size: 0.95rem; margin-bottom: 0.25rem; color: var(--neon-yellow);">
+                                            <?php printf(
+                                                __('Add the %s', 'skillscore-ebook'),
+                                                esc_html($feat_bump_name)
+                                            ); ?>
+                                            <?php if ($feat_bump_price > 0): ?>
+                                                <span id="bump-price-display"> — <?php echo esc_html($currency_symbol . number_format($feat_bump_price, 2)); ?></span>
+                                            <?php else: ?>
+                                                <span style="font-size: 0.8rem; font-weight: 400; color: #9ca3af;"> — <?php _e('FREE with this order', 'skillscore-ebook'); ?></span>
+                                            <?php endif; ?>
+                                        </strong>
+                                        <span style="font-size: 0.85rem; color: #9ca3af; line-height: 1.5;">
+                                            <?php _e('Take the book deeper with the companion guide designed for personal reflection, reading groups, leadership cohorts, and serious discussion.', 'skillscore-ebook'); ?>
+                                        </span>
+                                    </span>
+                                </label>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php /* Submit Button */ ?>
+                            <button type="submit" id="individual-submit-btn" class="btn-primary"
+                                    style="width: 100%; display: flex; align-items: center; justify-content: center;">
+                                <svg style="width: 20px; height: 20px; margin-right: 8px;" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/>
+                                </svg>
+                                <span id="submit-btn-text"><?php _e('GET INSTANT ACCESS', 'skillscore-ebook'); ?></span>
+                            </button>
+                            <p class="sse-microcopy" style="text-align: center; margin-top: 0.75rem;">
+                                <?php _e('You are one step away from owning a book that refuses to flatter weakness.', 'skillscore-ebook'); ?>
+                            </p>
+
+                        </div><!-- /#individual-purchase-section -->
+
+                        <?php /* ── BULK INQUIRY SECTION ── */ ?>
+                        <?php if ($feat_bulk_option): ?>
+                        <div id="bulk-inquiry-section" style="display: none;">
+                            <p style="font-size: 0.9rem; color: #9ca3af; margin-bottom: 1.5rem; font-style: italic; border-left: 3px solid var(--neon-yellow); padding-left: 0.75rem;">
+                                <?php _e('Bring this book into your institution, cohort, summit, or community.', 'skillscore-ebook'); ?>
+                            </p>
+
+                            <div style="margin-bottom: 1rem;">
+                                <label class="sse-field-label"><?php _e('Your Name', 'skillscore-ebook'); ?></label>
+                                <input type="text" name="bulk_user_name" class="sse-field-input bulk-required"
+                                       placeholder="<?php esc_attr_e('Full name', 'skillscore-ebook'); ?>">
+                            </div>
+
+                            <div style="margin-bottom: 0.5rem;">
+                                <label class="sse-field-label"><?php _e('Your Email', 'skillscore-ebook'); ?></label>
+                                <input type="email" name="bulk_user_email" class="sse-field-input bulk-required"
+                                       placeholder="<?php esc_attr_e('your@email.com', 'skillscore-ebook'); ?>">
+                            </div>
+                            <p class="sse-microcopy" style="margin-bottom: 1rem;"><?php _e('Your email will be used to send your confirmation and/or access details.', 'skillscore-ebook'); ?></p>
+
+                            <div style="margin-bottom: 1rem;">
+                                <label class="sse-field-label"><?php _e('Organization / Institution', 'skillscore-ebook'); ?></label>
+                                <input type="text" name="organization" class="sse-field-input bulk-required"
+                                       placeholder="<?php esc_attr_e('Organization name', 'skillscore-ebook'); ?>">
+                            </div>
+
+                            <div style="margin-bottom: 1rem;">
+                                <label class="sse-field-label"><?php _e('Phone Number', 'skillscore-ebook'); ?></label>
+                                <input type="tel" name="user_phone" class="sse-field-input"
+                                       placeholder="<?php esc_attr_e('+1 (555) 000-0000', 'skillscore-ebook'); ?>">
+                            </div>
+
+                            <div style="margin-bottom: 1rem;">
+                                <label class="sse-field-label">
+                                    <?php printf(__('Estimated Quantity (min %d)', 'skillscore-ebook'), $feat_bulk_min_qty); ?>
+                                </label>
+                                <input type="number" name="bulk_quantity" class="sse-field-input bulk-required"
+                                       min="<?php echo esc_attr($feat_bulk_min_qty); ?>"
+                                       placeholder="<?php esc_attr_e('Number of copies', 'skillscore-ebook'); ?>">
+                            </div>
+
+                            <div style="margin-bottom: 1.5rem;">
+                                <label class="sse-field-label"><?php _e('Inquiry / Message', 'skillscore-ebook'); ?></label>
+                                <textarea name="bulk_message" rows="4" class="sse-field-input"
+                                          style="resize: vertical;"
+                                          placeholder="<?php esc_attr_e('Tell us about your use case — event, program, organisation type, timeline, etc.', 'skillscore-ebook'); ?>"></textarea>
+                            </div>
+
+                            <button type="submit" id="bulk-submit-btn" class="btn-primary"
+                                    style="width: 100%; display: flex; align-items: center; justify-content: center;">
+                                <svg style="width: 20px; height: 20px; margin-right: 8px;" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
+                                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
+                                </svg>
+                                <?php _e('SUBMIT BULK INQUIRY', 'skillscore-ebook'); ?>
+                            </button>
+                            <p class="sse-microcopy" style="text-align: center; margin-top: 0.75rem;">
+                                <?php _e('No payment is processed at this stage. Our team will follow up with pricing and details.', 'skillscore-ebook'); ?>
+                            </p>
+                        </div><!-- /#bulk-inquiry-section -->
+                        <?php endif; ?>
+
                     </form>
                 </div>
             <?php endif; ?>

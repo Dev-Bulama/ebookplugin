@@ -9,58 +9,200 @@
 
     $(document).ready(function() {
 
-        /**
-         * Handle purchase form submission
-         */
+        /* ──────────────────────────────────────────
+         * FORMAT SELECTOR — update hidden field + UI + button text
+         * ────────────────────────────────────────── */
+        $('input[name="_order_format_ui"]').on('change', function() {
+            var format = $(this).val();
+            $('#hidden-order-format').val(format);
+
+            // Toggle format option borders
+            $('.sse-format-option').css('border-color', 'var(--light-gray)');
+            $('input[name="_order_format_ui"]:checked').closest('.sse-format-option').css('border-color', 'var(--neon-yellow)');
+
+            // Show / hide shipping fields
+            if (skillscoreEbook.enableShippingFields) {
+                if (format === 'paperback') {
+                    $('#shipping-fields-group').slideDown(200);
+                    $('#shipping-fields-group .sse-shipping-field').prop('required', true);
+                } else {
+                    $('#shipping-fields-group').slideUp(200);
+                    $('#shipping-fields-group .sse-shipping-field').prop('required', false);
+                }
+            }
+
+            // Update submit button text
+            updateSubmitButtonText();
+        });
+
+        function updateSubmitButtonText() {
+            var format   = $('#hidden-order-format').val() || 'ebook';
+            var btnText  = format === 'paperback' ? 'COMPLETE MY ORDER' : 'GET INSTANT ACCESS';
+            $('#submit-btn-text').text(btnText);
+        }
+
+        // Initialise button text on page load
+        updateSubmitButtonText();
+
+        /* ──────────────────────────────────────────
+         * PURCHASE TYPE TOGGLE — individual vs bulk
+         * ────────────────────────────────────────── */
+        $('input[name="_order_type_ui"]').on('change', function() {
+            var type = $(this).val();
+            $('#hidden-order-type').val(type);
+
+            // Toggle type option borders
+            $('.sse-type-option').css('border-color', 'var(--light-gray)');
+            $('input[name="_order_type_ui"]:checked').closest('.sse-type-option').css('border-color', 'var(--neon-yellow)');
+
+            if (type === 'bulk') {
+                $('#individual-purchase-section').slideUp(200, function() {
+                    $('#bulk-inquiry-section').slideDown(200);
+                });
+                // Remove required from individual-only fields so form can submit
+                $('#individual-purchase-section input[required], #individual-purchase-section textarea[required]')
+                    .prop('required', false).addClass('sse-was-required');
+                // Make bulk fields required
+                $('#bulk-inquiry-section .bulk-required').prop('required', true);
+            } else {
+                $('#bulk-inquiry-section').slideUp(200, function() {
+                    $('#individual-purchase-section').slideDown(200);
+                });
+                // Restore required on individual fields
+                $('#individual-purchase-section .sse-was-required')
+                    .prop('required', true).removeClass('sse-was-required');
+                // Remove required from bulk fields
+                $('#bulk-inquiry-section .bulk-required').prop('required', false);
+            }
+        });
+
+        /* ──────────────────────────────────────────
+         * ORDER BUMP — update price display
+         * ────────────────────────────────────────── */
+        $('#order-bump-checkbox').on('change', function() {
+            if (!skillscoreEbook.enableOrderBump || !skillscoreEbook.orderBumpPrice) return;
+
+            var basePrice  = parseFloat($('#sse-quantity').data('price')) || 0;
+            var qty        = parseInt($('#sse-quantity').val()) || 1;
+            var bumpPrice  = parseFloat(skillscoreEbook.orderBumpPrice) || 0;
+            var total      = (basePrice * qty) + ($(this).is(':checked') ? bumpPrice : 0);
+
+            var display = $('#sse-total-display');
+            display.text('Total: ' + skillscoreEbook.currencySymbol + total.toFixed(2)).show();
+        });
+
+        /* ──────────────────────────────────────────
+         * QUANTITY CHANGE — update total display
+         * ────────────────────────────────────────── */
+        $('#sse-quantity, input[name="quantity"]').on('input change', function() {
+            var qty       = parseInt($(this).val()) || 1;
+            var basePrice = parseFloat($(this).data('price')) || 0;
+            var bumpAdded = $('#order-bump-checkbox').is(':checked');
+            var bumpPrice = skillscoreEbook.enableOrderBump ? (parseFloat(skillscoreEbook.orderBumpPrice) || 0) : 0;
+            var total     = (basePrice * qty) + (bumpAdded ? bumpPrice : 0);
+
+            if (basePrice > 0) {
+                $('#sse-total-display').text('Total: ' + skillscoreEbook.currencySymbol + total.toFixed(2)).show();
+            }
+
+            // Legacy total-price-display support
+            if ($('.total-price-display').length) {
+                $('.total-price-display').text(skillscoreEbook.currencySymbol + total.toFixed(2));
+            }
+        });
+
+        /* ──────────────────────────────────────────
+         * FORM SUBMISSION — individual + bulk paths
+         * ────────────────────────────────────────── */
         $('#ebook-purchase-form').on('submit', function(e) {
             e.preventDefault();
 
-            var $form = $(this);
-            var $button = $form.find('button[type="submit"]');
-            var originalText = $button.html();
+            var $form     = $(this);
+            var orderType = $('#hidden-order-type').val() || 'individual';
 
-            // Validate form
+            // Choose the correct active submit button
+            var $button = orderType === 'bulk'
+                ? $('#bulk-submit-btn')
+                : $('#individual-submit-btn');
+
+            var originalHtml = $button.html();
+
+            // HTML5 validation
             if (!$form[0].checkValidity()) {
                 $form[0].reportValidity();
                 return;
             }
 
-            // Disable button and show loading
-            $button.prop('disabled', true).html(
-                '<svg class="animate-spin h-5 w-5 mr-2 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">' +
+            var loadingHtml = '<svg class="animate-spin h-5 w-5 mr-2 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">' +
                 '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>' +
                 '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>' +
-                '</svg> Processing...'
-            );
+                '</svg> Processing...';
 
-            // Prepare data
+            $button.prop('disabled', true).html(loadingHtml);
+
+            // Build form data from the active section
             var formData = {
-                action: 'skillscore_initiate_payment',
-                nonce: skillscoreEbook.nonce,
-                ebook_id: $form.find('input[name="ebook_id"]').val(),
-                quantity: $form.find('input[name="quantity"]').val() || 1,
-                user_name: $form.find('input[name="user_name"]').val(),
-                user_email: $form.find('input[name="user_email"]').val(),
-                gateway: $form.find('input[name="gateway"]:checked').val()
+                action:     'skillscore_initiate_payment',
+                nonce:      skillscoreEbook.nonce,
+                ebook_id:   $form.find('input[name="ebook_id"]').val(),
+                order_type: orderType,
             };
 
-            // Send AJAX request
+            if (orderType === 'bulk') {
+                // Bulk inquiry fields — use the bulk section's name/email
+                formData.user_name       = $form.find('input[name="bulk_user_name"]').val();
+                formData.user_email      = $form.find('input[name="bulk_user_email"]').val();
+                formData.organization    = $form.find('input[name="organization"]').val();
+                formData.user_phone      = $form.find('input[name="user_phone"]').last().val();
+                formData.bulk_quantity   = $form.find('input[name="bulk_quantity"]').val();
+                formData.bulk_message    = $form.find('textarea[name="bulk_message"]').val();
+                formData.shipping_address = $form.find('input[name="shipping_address"]').val();
+                formData.shipping_city   = $form.find('input[name="shipping_city"]').val();
+                formData.shipping_state  = $form.find('input[name="shipping_state"]').val();
+                formData.shipping_country = $form.find('input[name="shipping_country"]').val();
+                formData.shipping_zip    = $form.find('input[name="shipping_zip"]').val();
+            } else {
+                // Individual purchase fields
+                formData.quantity     = $form.find('input[name="quantity"]').val() || 1;
+                formData.user_name    = $form.find('input[name="user_name"]').first().val();
+                formData.user_email   = $form.find('input[name="user_email"]').first().val();
+                formData.user_phone   = $form.find('input[name="user_phone"]').first().val();
+                formData.gateway      = $form.find('input[name="gateway"]:checked').val();
+                formData.order_format = $('#hidden-order-format').val() || 'ebook';
+                formData.order_bump   = $('#order-bump-checkbox').is(':checked') ? 1 : 0;
+                formData.shipping_address = $form.find('input[name="shipping_address"]').val();
+                formData.shipping_city    = $form.find('input[name="shipping_city"]').val();
+                formData.shipping_state   = $form.find('input[name="shipping_state"]').val();
+                formData.shipping_country = $form.find('input[name="shipping_country"]').val();
+                formData.shipping_zip     = $form.find('input[name="shipping_zip"]').val();
+            }
+
             $.ajax({
-                url: skillscoreEbook.ajaxUrl,
+                url:  skillscoreEbook.ajaxUrl,
                 type: 'POST',
                 data: formData,
                 success: function(response) {
-                    if (response.success && response.data.redirect_url) {
-                        // Redirect to payment gateway
-                        window.location.href = response.data.redirect_url;
+                    if (response.success) {
+                        if (response.data.bulk_inquiry) {
+                            // Bulk inquiry submitted — show inline success
+                            showMessage('success', response.data.message || 'Your inquiry has been received.');
+                            $('#bulk-inquiry-section').slideUp(300);
+                            $button.prop('disabled', false).html(originalHtml);
+                        } else if (response.data.redirect_url) {
+                            // Individual payment — redirect to gateway
+                            window.location.href = response.data.redirect_url;
+                        } else {
+                            showMessage('error', response.data.message || 'An unexpected error occurred.');
+                            $button.prop('disabled', false).html(originalHtml);
+                        }
                     } else {
                         showMessage('error', response.data.message || 'Payment initiation failed.');
-                        $button.prop('disabled', false).html(originalText);
+                        $button.prop('disabled', false).html(originalHtml);
                     }
                 },
-                error: function(xhr, status, error) {
+                error: function() {
                     showMessage('error', 'An error occurred. Please try again.');
-                    $button.prop('disabled', false).html(originalText);
+                    $button.prop('disabled', false).html(originalHtml);
                 }
             });
         });
@@ -195,18 +337,6 @@
             }, 500);
         });
 
-        /**
-         * Update quantity price display
-         */
-        $('input[name="quantity"]').on('input', function() {
-            var quantity = parseInt($(this).val()) || 1;
-            var basePrice = parseFloat($(this).data('price')) || 0;
-            var totalPrice = quantity * basePrice;
-
-            if ($('.total-price-display').length) {
-                $('.total-price-display').text(skillscoreEbook.currencySymbol + totalPrice.toFixed(2));
-            }
-        });
 
         /**
          * Copy download link functionality

@@ -51,11 +51,14 @@ class SkillScore_Ebook_Activator {
             payment_status varchar(50) NOT NULL DEFAULT 'pending',
             transaction_id varchar(255) DEFAULT NULL,
             order_date datetime NOT NULL,
+            order_type varchar(20) NOT NULL DEFAULT 'individual',
+            order_meta text DEFAULT NULL,
             PRIMARY KEY (id),
             KEY order_reference (order_reference),
             KEY ebook_id (ebook_id),
             KEY user_email (user_email),
-            KEY payment_status (payment_status)
+            KEY payment_status (payment_status),
+            KEY order_type (order_type)
         ) $charset_collate;";
 
         // Downloads table
@@ -82,6 +85,18 @@ class SkillScore_Ebook_Activator {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql_orders);
         dbDelta($sql_downloads);
+    }
+
+    /**
+     * Run schema upgrades for existing installations.
+     * Called on admin_init to handle updates without re-activation.
+     */
+    public static function maybe_upgrade_schema() {
+        $db_version = get_option('skillscore_ebook_db_version', '1.0');
+        if (version_compare($db_version, '1.1', '<')) {
+            self::create_tables();
+            update_option('skillscore_ebook_db_version', '1.1');
+        }
     }
 
     /**
@@ -121,6 +136,15 @@ class SkillScore_Ebook_Activator {
             'enable_paypal' => false,
             'enable_audio_preview' => true,
             'audio_preview_duration' => 60,
+            // Checkout feature defaults
+            'enable_format_selector' => false,
+            'enable_phone_field' => false,
+            'enable_shipping_fields' => false,
+            'enable_bulk_option' => false,
+            'bulk_min_quantity' => 10,
+            'enable_order_bump' => false,
+            'order_bump_name' => '90-Day No Excuse Journal',
+            'order_bump_price' => 0,
         );
 
         foreach ($default_options as $key => $value) {

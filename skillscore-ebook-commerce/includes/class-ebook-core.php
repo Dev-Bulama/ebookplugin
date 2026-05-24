@@ -71,6 +71,10 @@ class SkillScore_Ebook_Core {
         add_action('admin_init', array($admin_settings, 'register_settings'));
         add_action('admin_enqueue_scripts', array($admin_settings, 'enqueue_admin_assets'));
 
+        // Schema upgrades for existing installs
+        require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-activator.php';
+        add_action('admin_init', array('SkillScore_Ebook_Activator', 'maybe_upgrade_schema'));
+
         // Sample generator
         add_action('admin_menu', array('SkillScore_Sample_Generator', 'register_admin_page'));
 
@@ -158,10 +162,16 @@ class SkillScore_Ebook_Core {
             $this->plugin_name,
             'skillscoreEbook',
             array(
-                'ajaxUrl' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('skillscore_ebook_nonce'),
-                'currency' => get_option('skillscore_ebook_currency', 'USD'),
-                'currencySymbol' => get_option('skillscore_ebook_currency_symbol', '$'),
+                'ajaxUrl'              => admin_url('admin-ajax.php'),
+                'nonce'                => wp_create_nonce('skillscore_ebook_nonce'),
+                'currency'             => get_option('skillscore_ebook_currency', 'USD'),
+                'currencySymbol'       => get_option('skillscore_ebook_currency_symbol', '$'),
+                'enableFormatSelector' => (bool) get_option('skillscore_ebook_enable_format_selector'),
+                'enableShippingFields' => (bool) get_option('skillscore_ebook_enable_shipping_fields'),
+                'enableBulkOption'     => (bool) get_option('skillscore_ebook_enable_bulk_option'),
+                'bulkMinQuantity'      => intval(get_option('skillscore_ebook_bulk_min_quantity', 10)),
+                'enableOrderBump'      => (bool) get_option('skillscore_ebook_enable_order_bump'),
+                'orderBumpPrice'       => floatval(get_option('skillscore_ebook_order_bump_price', 0)),
             )
         );
     }
