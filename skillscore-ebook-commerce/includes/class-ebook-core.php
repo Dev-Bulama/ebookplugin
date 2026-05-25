@@ -42,14 +42,29 @@ class SkillScore_Ebook_Core {
      * Load the required dependencies.
      */
     private function load_dependencies() {
-        // Core classes
+        // Core classes — each line logged for activation debug
+        if (function_exists('_sse_log')) _sse_log('dep-1-cpt');
         require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-ebook-cpt.php';
+
+        if (function_exists('_sse_log')) _sse_log('dep-2-shortcodes');
         require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-shortcodes.php';
+
+        if (function_exists('_sse_log')) _sse_log('dep-3-payment');
         require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-payment-handler.php';
+
+        if (function_exists('_sse_log')) _sse_log('dep-4-download');
         require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-download-handler.php';
+
+        if (function_exists('_sse_log')) _sse_log('dep-5-voice');
         require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-voice-preview.php';
+
+        if (function_exists('_sse_log')) _sse_log('dep-6-admin-settings');
         require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-admin-settings.php';
+
+        if (function_exists('_sse_log')) _sse_log('dep-7-sample-generator');
         require_once SKILLSCORE_EBOOK_PLUGIN_DIR . 'includes/class-sample-generator.php';
+
+        if (function_exists('_sse_log')) _sse_log('dep-8-all-loaded');
 
         // Elementor widget - only load when Elementor is active
         // Don't load here, load it via hook when Elementor initializes
